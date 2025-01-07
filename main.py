@@ -32,6 +32,11 @@ st.markdown("""
 # ファイルアップロード
 uploaded_file = st.file_uploader("MP3ファイルをアップロードしてください", type=["mp3"])
 
+select_model = st.selectbox(
+    "要約に使用するモデルを選択してください",
+    ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo']
+)
+
 if st.button('話者分離する'):
     if uploaded_file is not None:
         with st.spinner("音声ファイルを処理中..."):
@@ -76,9 +81,9 @@ if st.button('話者分離する'):
                     else:
                         prompt = f"以下のテキストを要約してください。\n\n{transcript_text}"
                         completion = client.chat.completions.create(
-                            model="gpt-4o-mini",  # ご使用のモデル名に置き換えてください
+                            model=select_model,  # ご使用のモデル名に置き換えてください
                             messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
+                                {"role": "system", "content": "重要なポイントがわかるように文構造を整えてください"},
                                 {"role": "user", "content": prompt}
                             ]
                         )
@@ -140,9 +145,9 @@ if st.button('文字起こし・要約のみ行う'):
                     else:
                         prompt = f"以下のテキストを要約してください。\n\n{transcript_text}"
                         completion = client.chat.completions.create(
-                            model="gpt-4o-mini",  # ご使用のモデル名に置き換えてください
+                            model=select_model,  # ご使用のモデル名に置き換えてください
                             messages=[
-                                {"role": "system", "content": "専門的な用語の解説を交えてください"},
+                                {"role": "system", "content": "重要なポイントがわかるように文構造を整えてください"},
                                 {"role": "user", "content": prompt}
                             ]
                         )
