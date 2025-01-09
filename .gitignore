@@ -1,0 +1,6 @@
+.idea/
+env/
+.streamlit/
+.vscode/
+sample/
+.devcontainer/

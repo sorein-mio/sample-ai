@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import tempfile
+import librosa
 from openai import OpenAI
 from pyannote.audio import Pipeline
 
@@ -68,6 +69,45 @@ if st.button('話者分離する'):
                 st.text_area("Transcription with Speaker Separation", transcript_text, height=300)
 
                 # ==========================
+                #  話者分離と文字起こしの結合
+                # ==========================
+
+                st.subheader("話者分離と文字起こしの結合結果")
+                
+                # 話者の発言を時間順にソート
+                sorted_turns = sorted(diarization.itertracks(yield_label=True), key=lambda x: x[0].start)
+                
+                # 文字起こしテキストを単語に分割
+                words = transcript_text.split()
+                word_count = len(words)
+                
+                combined_text = ""
+                current_word = 0
+                
+                # 全体の長さを計算（最後のセグメントの終了時間）
+                total_duration = max(turn.end for turn, _, _ in sorted_turns)
+                
+                for turn, _, speaker in sorted_turns:
+                    # この発言の単語数を推定（全体の長さに対する比率で）
+                    turn_duration = turn.end - turn.start
+                    estimated_words = int((turn_duration / total_duration) * word_count)
+                
+                    # 発言テキストを取得
+                    turn_text = " ".join(words[current_word:current_word + estimated_words])
+                    current_word += estimated_words
+                
+                    # 結合テキストに追加
+                    combined_text += f"{speaker}: {turn_text}\n\n"
+                
+                try:
+                    st.text_area("話者分離と文字起こしの結合結果", combined_text, height=300)
+                except Exception as e:
+                    st.error(f"話者分離と文字起こしの結合中にエラーが発生しました: {e}")
+                    combined_text = "エラーにより結合結果を生成できませんでした。"
+
+
+
+                # ==========================
                 #  要約 (GPT API)
                 # ==========================
                 st.subheader("要約結果")
@@ -76,24 +116,26 @@ if st.button('話者分離する'):
                         st.warning("文字起こし結果が空です。要約できる内容がありません。")
                         summary = "要約できる内容がありません。"
                     else:
-                        prompt = f"以下のテキストを要約してください。\n\n{transcript_text}"
+                        # 議事録の形式で要約を要求する日本語のプロンプトに変更
+                        prompt = f"以下のテキストを議事録の形式で要約してください。\n\n{transcript_text}"
                         completion = client.chat.completions.create(
                             model=select_model,  # ご使用のモデル名に置き換えてください
                             messages=[
-                                {"role": "system", "content": "重要なポイントがわかるように文構造を整えてください"},
+                                {"role": "system", "content": "議事録の形式で要約してください。"},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         # 定義に応じて適切にメッセージコンテンツを取得
                         summary = completion.choices[0].message.content
-                    st.text_area("Summary", summary, height=200)
+                    st.markdown("### 議事録形式の要約\n" + summary)
                 except Exception as e:
                     st.error(f"要約中にエラーが発生しました: {e}")
 
                 # ==========================
                 #  txtとして出力
                 # ==========================
-                output_text = f"=== 文字起こし ===\n{transcript_text}\n\n=== 要約 ===\n{summary}"
+                # txtとして出力する際に、この結合結果も含める
+                output_text = f"=== 話者分離と文字起こしの結合結果 ===\n{combined_text}\n\n=== 要約 ===\n{summary}"
                 st.download_button(
                     label="結果をTXTファイルとしてダウンロード",
                     data=output_text,
@@ -140,17 +182,18 @@ if st.button('文字起こし・要約のみ行う'):
                         st.warning("文字起こし結果が空です。要約できる内容がありません。")
                         summary = "要約できる内容がありません。"
                     else:
-                        prompt = f"以下のテキストを要約してください。\n\n{transcript_text}"
+                        # 議事録の形式で要約を要求する日本語のプロンプトに変更
+                        prompt = f"以下のテキストを議事録の形式で要約してください。\n\n{transcript_text}"
                         completion = client.chat.completions.create(
                             model=select_model,  # ご使用のモデル名に置き換えてください
                             messages=[
-                                {"role": "system", "content": "重要なポイントがわかるように文構造を整えてください"},
+                                {"role": "system", "content": "議事録の形式で要約してください。"},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         # 定義に応じて適切にメッセージコンテンツを取得
                         summary = completion.choices[0].message.content
-                    st.text_area("Summary", summary, height=200)
+                    st.markdown("### 議事録形式の要約\n" + summary)
                 except Exception as e:
                     st.error(f"要約中にエラーが発生しました: {e}")
 
