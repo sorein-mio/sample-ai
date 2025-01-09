@@ -1,20 +1,45 @@
 import streamlit as st
 import os
 import tempfile
-import librosa
 from openai import OpenAI
 from pyannote.audio import Pipeline
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import io
 
 # PyAnnoteの設定
 pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization@2.1",
                                     use_auth_token=st.secrets["HUGGING_FACE_TOKEN"])
 
+# フォントの登録
+pdfmetrics.registerFont(TTFont('NotoSansJP', 'NotoSansJP-Regular.ttf'))
+
+# ==========================
+#  PDF作成関数の定義
+# ==========================
+def create_pdf(content):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    c.setFont('NotoSansJP', 12)
+    
+    y = 750
+    for line in content.split('\n'):
+        if y < 50:
+            c.showPage()
+            y = 750
+        c.drawString(50, y, line)
+        y -= 12
+
+    c.save()
+    buffer.seek(0)
+    return buffer
 
 # ==========================
 #  OpenAI APIキーの設定
 # ==========================
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])  # ここにOpenAIのAPIキーを入力してください
-
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # タイトル
 st.title("MP3音声データ処理アプリ")
@@ -33,6 +58,12 @@ uploaded_file = st.file_uploader("MP3ファイルをアップロードしてく�
 select_model = st.selectbox(
     "要約に使用するモデルを選択してください",
     ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo']
+)
+
+# ファイル形式の選択オプションを追加
+output_format = st.selectbox(
+    "出力ファイル形式を選択してください",
+    ['TXT', 'PDF']
 )
 
 if st.button('話者分離する'):
@@ -132,16 +163,26 @@ if st.button('話者分離する'):
                     st.error(f"要約中にエラーが発生しました: {e}")
 
                 # ==========================
-                #  txtとして出力
+                #  結果の出力
                 # ==========================
-                # txtとして出力する際に、この結合結果も含める
                 output_text = f"=== 話者分離と文字起こしの結合結果 ===\n{combined_text}\n\n=== 要約 ===\n{summary}"
-                st.download_button(
-                    label="結果をTXTファイルとしてダウンロード",
-                    data=output_text,
-                    file_name="result.txt",
-                    mime="text/plain",
-                )
+
+                # 出力ボタンの作成
+                if output_format == 'TXT':
+                    st.download_button(
+                        label="結果をTXTファイルとしてダウンロード",
+                        data=output_text,
+                        file_name="result.txt",
+                        mime="text/plain",
+                    )
+                elif output_format == 'PDF':
+                    pdf_buffer = create_pdf(output_text)
+                    st.download_button(
+                        label="結果をPDFファイルとしてダウンロード",
+                        data=pdf_buffer,
+                        file_name="result.pdf",
+                        mime="application/pdf",
+                    )
             except Exception as general_e:
                 st.error(f"処理中にエラーが発生しました: {general_e}")
             finally:
@@ -183,30 +224,41 @@ if st.button('文字起こし・要約のみ行う'):
                         summary = "要約できる内容がありません。"
                     else:
                         # 議事録の形式で要約を要求する日本語のプロンプトに変更
-                        prompt = f"以下のテキストを議事録の形式で要約してください。\n\n{transcript_text}"
+                        prompt = f"以下のテキストをマークダウン記法を用いて、議事録の形式で要約してください。\n\n{transcript_text}"
                         completion = client.chat.completions.create(
                             model=select_model,  # ご使用のモデル名に置き換えてください
                             messages=[
-                                {"role": "system", "content": "議事録の形式で要約してください。"},
+                                {"role": "system", "content": "マークダウン記法を用いて議事録の形式で要約してください。"},
                                 {"role": "user", "content": prompt}
                             ]
                         )
                         # 定義に応じて適切にメッセージコンテンツを取得
                         summary = completion.choices[0].message.content
-                    st.markdown("### 議事録形式の要約\n" + summary)
+                    st.markdown("### 議事録\n" + summary)
                 except Exception as e:
                     st.error(f"要約中にエラーが発生しました: {e}")
 
                 # ==========================
-                #  txtとして出力
+                #  結果の出力
                 # ==========================
                 output_text = f"=== 文字起こし ===\n{transcript_text}\n\n=== 要約 ===\n{summary}"
-                st.download_button(
-                    label="結果をTXTファイルとしてダウンロード",
-                    data=output_text,
-                    file_name="result.txt",
-                    mime="text/plain",
-                )
+
+                # 出力ボタンの作成
+                if output_format == 'TXT':
+                    st.download_button(
+                        label="結果をTXTファイルとしてダウンロード",
+                        data=output_text,
+                        file_name="result.txt",
+                        mime="text/plain",
+                    )
+                elif output_format == 'PDF':
+                    pdf_buffer = create_pdf(f"=== 要約 ===\n{summary}")
+                    st.download_button(
+                        label="結果をPDFファイルとしてダウンロード",
+                        data=pdf_buffer,
+                        file_name="result.pdf",
+                        mime="application/pdf",
+                    )
             except Exception as general_e:
                 st.error(f"処理中にエラーが発生しました: {general_e}")
             finally:
