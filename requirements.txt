@@ -1,3 +1,4 @@
 openai
 pyannote.audio
 reportlab
+streamlit
