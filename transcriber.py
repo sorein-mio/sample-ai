@@ -8,31 +8,57 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import fonts
 
 # PyAnnoteの設定
-pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization@2.1",
+pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1",
                                     use_auth_token=st.secrets["HUGGING_FACE_TOKEN"])
 
 # フォントの登録
 pdfmetrics.registerFont(TTFont('NotoSansJP', 'NotoSansJP-Regular.ttf'))
 
-# ==========================
-#  PDF作成関数の定義
-# ==========================
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_JUSTIFY
+import re
+
+import markdown
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_JUSTIFY
+from reportlab.platypus import Paragraph, Spacer, ListFlowable, ListItem
+from xml.etree import ElementTree as ET
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import io
+
 def create_pdf(content):
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=letter)
-    c.setFont('NotoSansJP', 12)
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
     
-    y = 750
-    for line in content.split('\n'):
-        if y < 50:
-            c.showPage()
-            y = 750
-        c.drawString(50, y, line)
-        y -= 12
+    # 日本語フォントの登録
+    pdfmetrics.registerFont(TTFont('NotoSansJP', 'NotoSansJP-Regular.ttf'))
+    
+    # カスタムスタイルの定義
+    styles.add(ParagraphStyle(name='Japanese', 
+                              fontName='NotoSansJP', 
+                              fontSize=10, 
+                              leading=14))
 
-    c.save()
+    # コンテンツを段落に分割
+    paragraphs = []
+    for line in content.split('\n'):
+        if line.strip():
+            p = Paragraph(line, styles['Japanese'])
+            paragraphs.append(p)
+            paragraphs.append(Spacer(1, 6))  # 段落間のスペース
+
+    # PDFの生成
+    doc.build(paragraphs)
     buffer.seek(0)
     return buffer
 
@@ -66,6 +92,12 @@ output_format = st.selectbox(
     ['TXT', 'PDF']
 )
 
+# 話者人数の選択
+num_speakers = st.selectbox(
+    "話者の人数を選択してください（未設定の場合は自動検出されます）",
+    ['未設定', '1', '2', '3', '4', '5']
+)
+
 if st.button('話者分離する'):
     if uploaded_file is not None:
         with st.spinner("音声ファイルを処理中..."):
@@ -79,7 +111,11 @@ if st.button('話者分離する'):
                 #  話者分離 (PyAnnote)
                 # ==========================
                 st.subheader("話者分離結果")
-                diarization = pipeline(tmp_filename)
+                # 話者の人数を指定して話者分離を実行
+                if num_speakers != '未設定':
+                    diarization = pipeline(tmp_filename, num_speakers=int(num_speakers))
+                else:
+                    diarization = pipeline(tmp_filename)
 
                 # 話者分離結果の表示
                 for turn, _, speaker in diarization.itertracks(yield_label=True):
@@ -241,7 +277,7 @@ if st.button('文字起こし・要約のみ行う'):
                 # ==========================
                 #  結果の出力
                 # ==========================
-                output_text = f"=== 文字起こし ===\n{transcript_text}\n\n=== 要約 ===\n{summary}"
+                output_text = f"### === 文字起こし ===\n{transcript_text}\n\n ### === 要約 ===\n{summary}"
 
                 # 出力ボタンの作成
                 if output_format == 'TXT':
@@ -252,7 +288,7 @@ if st.button('文字起こし・要約のみ行う'):
                         mime="text/plain",
                     )
                 elif output_format == 'PDF':
-                    pdf_buffer = create_pdf(f"=== 要約 ===\n{summary}")
+                    pdf_buffer = create_pdf(output_text)
                     st.download_button(
                         label="結果をPDFファイルとしてダウンロード",
                         data=pdf_buffer,
@@ -265,4 +301,3 @@ if st.button('文字起こし・要約のみ行う'):
                 # クリーンアップのため一時ファイルを削除
                 if os.path.exists(tmp_filename):
                     os.remove(tmp_filename)
-

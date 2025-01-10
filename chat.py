@@ -15,7 +15,7 @@ def main():
 
     select_model = st.selectbox(
         "会話に使用するモデルを選択してください",
-        ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo']
+        ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'o1-preview']
     )
 
     # セッション状態の初期化
