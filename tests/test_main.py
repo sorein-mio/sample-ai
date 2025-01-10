@@ -33,7 +33,6 @@ class TestMain(unittest.TestCase):
 
     def test_page_config(self):
         # ページ設定が正しいか確認
-        # ページ設定が正しいか確認
         # 現在のStreamlitでは直接確認する方法がないため、set_page_configの呼び出しが成功することを確認
         try:
             main.st.set_page_config(page_title="OpenAIサンプルアプリ", layout="wide")
@@ -41,7 +40,6 @@ class TestMain(unittest.TestCase):
             self.fail(f"set_page_config failed: {e}")
 
     def test_navigation(self):
-        # ナビゲーションが正しいか確認
         # ナビゲーションが正しいか確認
         # ボタンの存在を確認
         try:

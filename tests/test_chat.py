@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import unittest
 from unittest.mock import patch, MagicMock
-import chat
+from chat import main as chat_main
 
 class TestChat(unittest.TestCase):
     @patch('chat.st')
@@ -18,23 +18,22 @@ class TestChat(unittest.TestCase):
         # OpenAIのクライアントをモック
         mock_client = MagicMock()
         mock_openai.return_value = mock_client
-        mock_client.chat.completions.create.return_value = [
-            MagicMock(choices=[MagicMock(delta=MagicMock(content="Hello"))])
-        ]
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="こんにちは！何かお手伝いできることがあれば教えてください。"))]
+        )
         
         # ユーザーの入力をシミュレート
         mock_st.chat_input.return_value = "こんにちは"
         
-        # チャット機能をテスト
-        # StreamlitのUI要素を直接呼び出すのではなく、関数をテストする
-        # ここでは、ユーザーの入力とOpenAIの応答が正しく処理されるかを確認
-        mock_st.session_state.messages.append({"role": "user", "content": mock_st.chat_input.return_value})
-        mock_st.session_state.messages.append({"role": "assistant", "content": "Hello"})
+        # Streamlitのselectboxの戻り値を設定
+        mock_st.selectbox.return_value = "gpt-4o"
+
+        chat_main()
         
         # メッセージが正しく追加されたか確認
-        self.assertEqual(len(mock_st.session_state['messages']), 2)
-        self.assertEqual(mock_st.session_state['messages'][0]['content'], "こんにちは")
-        self.assertEqual(mock_st.session_state['messages'][1]['content'], "Hello")
+        self.assertEqual(len(mock_st.session_state.messages), 2)
+        self.assertEqual(mock_st.session_state.messages[0]['content'], "こんにちは")
+        self.assertTrue(len(mock_st.session_state.messages[1]['content']) > 0)
 
 if __name__ == '__main__':
     unittest.main()
