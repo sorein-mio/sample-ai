@@ -16,6 +16,26 @@ MODELS = {
         "description": "2025年8月リリースの最強モデル。GPTシリーズとoシリーズを統合",
         "category": "最強モデル"
     },
+    "GPT-5 Standard (標準版)": {
+        "id": "gpt-5-standard",
+        "description": "GPT-5の標準版。一般的な用途向けに最適化されたバランス型モデル",
+        "category": "最強モデル"
+    },
+    "GPT-5 Mini (軽量版)": {
+        "id": "gpt-5-mini",
+        "description": "GPT-5の軽量版。高速処理とコスト効率を重視したモデル",
+        "category": "最強モデル"
+    },
+    "GPT-5 Nano (超軽量版)": {
+        "id": "gpt-5-nano",
+        "description": "GPT-5の超軽量版。リソースが限られた環境での使用に最適",
+        "category": "最強モデル"
+    },
+    "GPT-5 Chat (対話特化)": {
+        "id": "gpt-5-chat",
+        "description": "対話型アプリケーション向けに最適化されたGPT-5モデル",
+        "category": "最強モデル"
+    },
     "GPT-4o (マルチモーダル)": {
         "id": "gpt-4o",
         "description": "テキスト、画像、音声の統合処理が可能なマルチモーダルモデル",
@@ -72,9 +92,9 @@ def main():
         st.markdown("---")
         st.subheader("🔧 追加設定")
         
-        # GPT-5ではtemperatureを固定値に
-        if selected_model["id"] == "gpt-5":
-            st.info("🤖 GPT-5では創造性は固定値(1.0)です")
+        # GPT-5系ではtemperatureを固定値に
+        if selected_model["id"].startswith("gpt-5"):
+            st.info("🤖 GPT-5系では創造性は固定値(1.0)です")
             temperature = 1.0
         else:
             temperature = st.slider("創造性 (Temperature)", 0.0, 2.0, 0.7, 0.1)
@@ -124,8 +144,8 @@ def main():
                 if selected_model["id"].startswith("o1"):
                     # o1系はtemperatureとmax_tokensを設定しない
                     pass
-                elif selected_model["id"] == "gpt-5":
-                    # GPT-5はパラメータ制限あり（temperature=1のみ、max_completion_tokens使用）
+                elif selected_model["id"].startswith("gpt-5"):
+                    # GPT-5系はパラメータ制限あり（temperature=1のみ、max_completion_tokens使用）
                     api_params["temperature"] = 1.0
                     api_params["max_completion_tokens"] = max_tokens
                 else:
