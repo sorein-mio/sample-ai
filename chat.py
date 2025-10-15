@@ -71,7 +71,14 @@ def main():
         # 追加設定
         st.markdown("---")
         st.subheader("🔧 追加設定")
-        temperature = st.slider("創造性 (Temperature)", 0.0, 2.0, 0.7, 0.1)
+        
+        # GPT-5ではtemperatureを固定値に
+        if selected_model["id"] == "gpt-5":
+            st.info("🤖 GPT-5では創造性は固定値(1.0)です")
+            temperature = 1.0
+        else:
+            temperature = st.slider("創造性 (Temperature)", 0.0, 2.0, 0.7, 0.1)
+        
         max_tokens = st.slider("最大トークン数", 100, 4000, 1000, 100)
 
     # メインエリア
@@ -118,8 +125,8 @@ def main():
                     # o1系はtemperatureとmax_tokensを設定しない
                     pass
                 elif selected_model["id"] == "gpt-5":
-                    # GPT-5はmax_completion_tokensを使用
-                    api_params["temperature"] = temperature
+                    # GPT-5はパラメータ制限あり（temperature=1のみ、max_completion_tokens使用）
+                    api_params["temperature"] = 1.0
                     api_params["max_completion_tokens"] = max_tokens
                 else:
                     # その他のモデルは従来通り
