@@ -13,58 +13,28 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])  # ここにOpenAIのAPI�
 MODELS = {
     "GPT-5 (最強・統合型)": {
         "id": "gpt-5",
-        "description": "2025年8月リリースの最強モデル。GPTシリーズとoシリーズを統合し、推論能力とコード生成能力が大幅向上",
+        "description": "2025年8月リリースの最強モデル。GPTシリーズとoシリーズを統合",
         "category": "最強モデル"
-    },
-    "GPT-5 Standard (標準版)": {
-        "id": "gpt-5-standard",
-        "description": "GPT-5の標準版。一般的な用途向けに最適化されたバランス型モデル",
-        "category": "最強モデル"
-    },
-    "GPT-5 Mini (軽量版)": {
-        "id": "gpt-5-mini",
-        "description": "GPT-5の軽量版。高速処理とコスト効率を重視したモデル",
-        "category": "最強モデル"
-    },
-    "GPT-5 Nano (超軽量版)": {
-        "id": "gpt-5-nano",
-        "description": "GPT-5の超軽量版。リソースが限られた環境での使用に最適",
-        "category": "最強モデル"
-    },
-    "GPT-5 Chat (対話特化)": {
-        "id": "gpt-5-chat",
-        "description": "対話型アプリケーション向けに最適化されたGPT-5モデル",
-        "category": "最強モデル"
-    },
-    "GPT-4.1 (高性能)": {
-        "id": "gpt-4.1",
-        "description": "2025年4月リリースの高性能モデル。プログラミング能力と指示理解能力が向上",
-        "category": "最新モデル"
     },
     "GPT-4o (マルチモーダル)": {
         "id": "gpt-4o",
         "description": "テキスト、画像、音声の統合処理が可能なマルチモーダルモデル",
-        "category": "マルチモーダル"
+        "category": "最新モデル"
     },
     "GPT-4o-mini (高速・軽量)": {
         "id": "gpt-4o-mini",
         "description": "GPT-4oの軽量版。高速レスポンスとコスト効率を重視",
         "category": "軽量モデル"
     },
-    "o1-preview (推論特化)": {
-        "id": "o1-preview",
-        "description": "複雑な推論タスクに特化したモデル。数学や科学の問題解決に優れる",
-        "category": "推論特化"
-    },
-    "o1-mini (推論軽量)": {
+    "o1-mini (推論特化)": {
         "id": "o1-mini",
-        "description": "o1の軽量版。推論能力を保ちながら高速レスポンスを実現",
+        "description": "推論能力に特化したモデル。数学や科学の問題解決に優れる",
         "category": "推論特化"
     },
-    "o3-mini (次世代推論)": {
-        "id": "o3-mini",
-        "description": "2025年1月リリース。推論能力がさらに強化された次世代モデル",
-        "category": "次世代推論"
+    "GPT-4-turbo (高性能)": {
+        "id": "gpt-4-turbo",
+        "description": "GPT-4の高性能版。複雑なタスクに優れた性能を発揮",
+        "category": "高性能"
     },
     "GPT-3.5-turbo (従来型)": {
         "id": "gpt-3.5-turbo",
@@ -143,15 +113,15 @@ def main():
                     "stream": True,
                 }
                 
-                # o1系、o3系、GPT-5系はtemperatureとmax_tokensを設定しない
-                if not (selected_model["id"].startswith("o1") or 
-                        selected_model["id"].startswith("o3") or 
-                        selected_model["id"].startswith("gpt-5")):
+                # o1系はtemperatureとmax_tokensを設定しない
+                if not selected_model["id"].startswith("o1"):
                     api_params["temperature"] = temperature
                     api_params["max_tokens"] = max_tokens
                 
                 # API呼び出し
-                for response in client.chat.completions.create(**api_params):
+                response_stream = client.chat.completions.create(**api_params)
+                
+                for response in response_stream:
                     if response.choices[0].delta.content:
                         full_response += response.choices[0].delta.content
                         message_placeholder.markdown(full_response + "▌")
@@ -168,6 +138,11 @@ def main():
             except Exception as e:
                 error_msg = f"❌ エラーが発生しました: {str(e)}"
                 message_placeholder.error(error_msg)
+                
+                # モデルが存在しない場合の特別な処理
+                if "does not exist" in str(e) or "model_not_found" in str(e):
+                    st.warning(f"⚠️ モデル '{selected_model['id']}' が見つかりません。別のモデルを選択してください。")
+                
                 st.session_state.messages.append({
                     "role": "assistant", 
                     "content": error_msg,
