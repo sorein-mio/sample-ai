@@ -82,30 +82,14 @@ def main():
     with st.sidebar:
         st.header("⚙️ モデル設定")
         
-        # カテゴリ別にモデルをグループ化
-        categories = {}
-        for name, info in MODELS.items():
-            category = info["category"]
-            if category not in categories:
-                categories[category] = []
-            categories[category].append((name, info))
-        
-        # カテゴリごとにモデルを表示
-        selected_model_name = None
-        for category, models in categories.items():
-            st.subheader(f"📁 {category}")
-            for name, info in models:
-                if st.radio(
-                    name,
-                    [name],
-                    key=f"model_{name}",
-                    help=info["description"]
-                ):
-                    selected_model_name = name
-        
-        # デフォルト選択
-        if not selected_model_name:
-            selected_model_name = "GPT-5 (最強・統合型)"
+        # シンプルなモデル選択
+        model_options = list(MODELS.keys())
+        selected_model_name = st.selectbox(
+            "会話に使用するモデルを選択してください",
+            model_options,
+            index=0,  # デフォルトでGPT-5を選択
+            help="各モデルの特徴を確認してから選択してください"
+        )
         
         selected_model = MODELS[selected_model_name]
         
@@ -126,15 +110,6 @@ def main():
     # セッション状態の初期化
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "current_model" not in st.session_state:
-        st.session_state.current_model = selected_model_name
-
-    # モデル変更時の履歴クリア確認
-    if st.session_state.current_model != selected_model_name:
-        if st.button("🔄 モデルを変更（履歴をクリア）"):
-            st.session_state.messages = []
-            st.session_state.current_model = selected_model_name
-            st.rerun()
 
     # チャット履歴の表示
     for message in st.session_state.messages:
