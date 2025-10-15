@@ -120,7 +120,12 @@ def main():
 
     # ユーザー入力
     if prompt := st.chat_input("メッセージを入力してください..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        # 入力メッセージにタイムスタンプを付与
+        st.session_state.messages.append({
+            "role": "user",
+            "content": prompt,
+            "ts": int(time.time())
+        })
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -163,11 +168,25 @@ def main():
                 
                 message_placeholder.markdown(full_response)
                 
-                # メッセージにモデル情報を追加
+                # メッセージにモデル情報・利用パラメータ・タイムスタンプを追加
+                used_params = {
+                    "model": selected_model["id"],
+                    # GPT-5系はmax_completion_tokens、それ以外はmax_tokensを採用
+                    "temperature": 1.0 if selected_model["id"].startswith("gpt-5") else (
+                        None if selected_model["id"].startswith("o1") else temperature
+                    ),
+                    "max_tokens": None if selected_model["id"].startswith("gpt-5") else (
+                        None if selected_model["id"].startswith("o1") else max_tokens
+                    ),
+                    "max_completion_tokens": max_tokens if selected_model["id"].startswith("gpt-5") else None,
+                }
+
                 st.session_state.messages.append({
-                    "role": "assistant", 
+                    "role": "assistant",
                     "content": full_response,
-                    "model_info": selected_model_name
+                    "model_info": selected_model_name,
+                    "params": used_params,
+                    "ts": int(time.time())
                 })
                 
             except Exception as e:
@@ -181,7 +200,9 @@ def main():
                 st.session_state.messages.append({
                     "role": "assistant", 
                     "content": error_msg,
-                    "model_info": selected_model_name
+                    "model_info": selected_model_name,
+                    "params": {"model": selected_model["id"]},
+                    "ts": int(time.time())
                 })
 
     # チャット履歴管理
@@ -192,19 +213,57 @@ def main():
                 st.session_state.messages = []
                 st.rerun()
         with col2:
+            # エクスポート設定
+            export_format = st.selectbox("エクスポート形式", ["CSV", "JSONL"], index=0)
             if st.button("💾 履歴をエクスポート"):
-                # 履歴をテキスト形式でエクスポート
-                export_text = ""
-                for msg in st.session_state.messages:
-                    role = "ユーザー" if msg["role"] == "user" else "アシスタント"
-                    export_text += f"{role}: {msg['content']}\n\n"
-                
-                st.download_button(
-                    label="📥 ダウンロード",
-                    data=export_text,
-                    file_name=f"chat_history_{int(time.time())}.txt",
-                    mime="text/plain"
-                )
+                if export_format == "CSV":
+                    # 比較しやすい縦持ちCSV: index,ts,role,model,temperature,max_tokens,max_completion_tokens,content
+                    import csv
+                    from io import StringIO
+                    buffer = StringIO()
+                    writer = csv.writer(buffer)
+                    writer.writerow(["index", "ts", "role", "model", "temperature", "max_tokens", "max_completion_tokens", "content"])
+                    for i, msg in enumerate(st.session_state.messages):
+                        params = msg.get("params", {})
+                        model = params.get("model", msg.get("model_info", ""))
+                        writer.writerow([
+                            i,
+                            msg.get("ts", ""),
+                            msg.get("role", ""),
+                            model,
+                            params.get("temperature", ""),
+                            params.get("max_tokens", ""),
+                            params.get("max_completion_tokens", ""),
+                            msg.get("content", "").replace("\n", " ")
+                        ])
+                    data = buffer.getvalue()
+                    st.download_button(
+                        label="📥 CSVダウンロード",
+                        data=data,
+                        file_name=f"chat_history_{int(time.time())}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    # JSONL: 1行1メッセージ（比較のための完全情報）
+                    import json
+                    lines = []
+                    for i, msg in enumerate(st.session_state.messages):
+                        record = {
+                            "index": i,
+                            "ts": msg.get("ts"),
+                            "role": msg.get("role"),
+                            "model_info": msg.get("model_info"),
+                            "params": msg.get("params"),
+                            "content": msg.get("content"),
+                        }
+                        lines.append(json.dumps(record, ensure_ascii=False))
+                    data = "\n".join(lines)
+                    st.download_button(
+                        label="📥 JSONLダウンロード",
+                        data=data,
+                        file_name=f"chat_history_{int(time.time())}.jsonl",
+                        mime="application/jsonl"
+                    )
 
 # スクリプトが直接実行された場合にmainを呼び出す
 if __name__ == "__main__":
