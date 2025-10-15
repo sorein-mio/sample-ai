@@ -113,8 +113,16 @@ def main():
                     "stream": True,
                 }
                 
-                # o1系はtemperatureとmax_tokensを設定しない
-                if not selected_model["id"].startswith("o1"):
+                # モデル固有のパラメータ設定
+                if selected_model["id"].startswith("o1"):
+                    # o1系はtemperatureとmax_tokensを設定しない
+                    pass
+                elif selected_model["id"] == "gpt-5":
+                    # GPT-5はmax_completion_tokensを使用
+                    api_params["temperature"] = temperature
+                    api_params["max_completion_tokens"] = max_tokens
+                else:
+                    # その他のモデルは従来通り
                     api_params["temperature"] = temperature
                     api_params["max_tokens"] = max_tokens
                 
