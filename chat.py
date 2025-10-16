@@ -2,6 +2,14 @@ import streamlit as st
 from openai import OpenAI
 import time
 
+# Streamlitの設定を最適化
+st.set_page_config(
+    page_title="最新AIチャットアプリ",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # ==========================
 #  OpenAI APIキーの設定
 # ==========================
@@ -72,14 +80,22 @@ def main():
     st.markdown("""
     <style>
     .stChatMessage {
-        word-wrap: break-word;
-        white-space: pre-wrap;
-        overflow-wrap: break-word;
+        word-wrap: break-word !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
+        max-width: 100% !important;
     }
     .stChatMessage .stMarkdown {
-        word-wrap: break-word;
-        white-space: pre-wrap;
-        overflow-wrap: break-word;
+        word-wrap: break-word !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
+        max-width: 100% !important;
+    }
+    .stChatMessage .stMarkdown p {
+        word-wrap: break-word !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word !important;
+        max-width: 100% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -127,16 +143,9 @@ def main():
     # チャット履歴の表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            # メッセージを完全に表示
+            # メッセージを完全に表示（シンプルに）
             content = message["content"]
-            
-            # すべてのメッセージを完全表示（切れないように）
             st.markdown(content)
-            
-            # 長いメッセージの場合は追加で折りたたみ表示も提供
-            if len(content) > 500:
-                with st.expander("📄 メッセージ全体を表示", expanded=False):
-                    st.text(content)  # プレーンテキストで完全表示
             
             if message["role"] == "assistant":
                 # モデル情報を表示
