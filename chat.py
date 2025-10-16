@@ -177,15 +177,24 @@ def main():
                         {"role": m["role"], "content": m["content"]}
                         for m in st.session_state.messages
                     ],
-                    "stream": True,
                 }
+                
+                # GPT-5 nanoはストリーミングが不安定な可能性があるため、条件分岐
+                if selected_model["id"] == "gpt-5-nano":
+                    api_params["stream"] = False  # nanoはストリーミング無効
+                else:
+                    api_params["stream"] = True
                 
                 # モデル固有のパラメータ設定
                 if selected_model["id"].startswith("o1"):
                     # o1系はtemperatureとmax_tokensを設定しない
                     pass
+                elif selected_model["id"] == "gpt-5-nano":
+                    # GPT-5 nanoは特別な設定（軽量版のため最小限のパラメータ）
+                    api_params["temperature"] = 1.0
+                    api_params["max_completion_tokens"] = min(max_tokens, 500)  # nanoは短い応答に制限
                 elif selected_model["id"].startswith("gpt-5"):
-                    # GPT-5系はパラメータ制限あり（temperature=1のみ、max_completion_tokens使用）
+                    # その他のGPT-5系はパラメータ制限あり
                     api_params["temperature"] = 1.0
                     api_params["max_completion_tokens"] = max_tokens
                 else:
@@ -194,14 +203,21 @@ def main():
                     api_params["max_tokens"] = max_tokens
                 
                 # API呼び出し
-                response_stream = client.chat.completions.create(**api_params)
-                
-                for response in response_stream:
-                    if response.choices[0].delta.content:
-                        full_response += response.choices[0].delta.content
-                        message_placeholder.markdown(full_response + "▌")
-                
-                message_placeholder.markdown(full_response)
+                if api_params.get("stream", True):
+                    # ストリーミング対応
+                    response_stream = client.chat.completions.create(**api_params)
+                    
+                    for response in response_stream:
+                        if response.choices[0].delta.content:
+                            full_response += response.choices[0].delta.content
+                            message_placeholder.markdown(full_response + "▌")
+                    
+                    message_placeholder.markdown(full_response)
+                else:
+                    # 非ストリーミング（GPT-5 nano用）
+                    response = client.chat.completions.create(**api_params)
+                    full_response = response.choices[0].message.content
+                    message_placeholder.markdown(full_response)
                 
                 # メッセージにモデル情報・利用パラメータ・タイムスタンプを追加
                 used_params = {
