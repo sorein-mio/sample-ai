@@ -24,24 +24,9 @@ MODELS = {
         "description": "2025年8月リリースの最強モデル。GPTシリーズとoシリーズを統合",
         "category": "最強モデル"
     },
-    "GPT-5 Standard (標準版)": {
-        "id": "gpt-5-standard",
-        "description": "GPT-5の標準版。一般的な用途向けに最適化されたバランス型モデル",
-        "category": "最強モデル"
-    },
     "GPT-5 Mini (軽量版)": {
         "id": "gpt-5-mini",
         "description": "GPT-5の軽量版。高速処理とコスト効率を重視したモデル",
-        "category": "最強モデル"
-    },
-    "GPT-5 nano (超軽量版)": {
-        "id": "gpt-5-nano",
-        "description": "要約と分類タスクに最適な、高速で安価なGPT-5のバージョン",
-        "category": "最強モデル"
-    },
-    "GPT-5 pro (最高性能)": {
-        "id": "gpt-5-pro",
-        "description": "最も賢く正確なモデル。最高の性能を提供",
         "category": "最強モデル"
     },
     "GPT-5 Chat (対話特化)": {
@@ -211,22 +196,15 @@ def main():
                     ],
                 }
                 
-                # GPT-5 nanoはストリーミングが不安定な可能性があるため、条件分岐
-                if selected_model["id"] == "gpt-5-nano":
-                    api_params["stream"] = False  # nanoはストリーミング無効
-                else:
-                    api_params["stream"] = True
+                # ストリーミング設定
+                api_params["stream"] = True
                 
                 # モデル固有のパラメータ設定
                 if selected_model["id"].startswith("o1"):
                     # o1系はtemperatureとmax_tokensを設定しない
                     pass
-                elif selected_model["id"] == "gpt-5-nano":
-                    # GPT-5 nanoは特別な設定（軽量版のため最小限のパラメータ）
-                    api_params["temperature"] = 1.0
-                    api_params["max_completion_tokens"] = min(max_tokens, 500)  # nanoは短い応答に制限
                 elif selected_model["id"].startswith("gpt-5"):
-                    # その他のGPT-5系はパラメータ制限あり
+                    # GPT-5系はパラメータ制限あり
                     api_params["temperature"] = 1.0
                     api_params["max_completion_tokens"] = max_tokens
                 else:
@@ -235,21 +213,14 @@ def main():
                     api_params["max_tokens"] = max_tokens
                 
                 # API呼び出し
-                if api_params.get("stream", True):
-                    # ストリーミング対応
-                    response_stream = client.chat.completions.create(**api_params)
-                    
-                    for response in response_stream:
-                        if response.choices[0].delta.content:
-                            full_response += response.choices[0].delta.content
-                            message_placeholder.markdown(full_response + "▌")
-                    
-                    message_placeholder.markdown(full_response)
-                else:
-                    # 非ストリーミング（GPT-5 nano用）
-                    response = client.chat.completions.create(**api_params)
-                    full_response = response.choices[0].message.content
-                    message_placeholder.markdown(full_response)
+                response_stream = client.chat.completions.create(**api_params)
+                
+                for response in response_stream:
+                    if response.choices[0].delta.content:
+                        full_response += response.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
+                
+                message_placeholder.markdown(full_response)
                 
                 # メッセージにモデル情報・利用パラメータ・タイムスタンプを追加
                 used_params = {
