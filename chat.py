@@ -2,14 +2,6 @@ import streamlit as st
 from openai import OpenAI
 import time
 
-# Streamlitの設定を最適化
-st.set_page_config(
-    page_title="最新AIチャットアプリ",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # ==========================
 #  OpenAI APIキーの設定
 # ==========================

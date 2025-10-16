@@ -1,6 +1,11 @@
 import streamlit as st
 
-st.set_page_config(page_title="OpenAIサンプルアプリ", layout="wide")
+st.set_page_config(
+    page_title="最新AIチャットアプリ",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # サイドバーにナビゲーションを追加
 page = st.sidebar.radio("ページを選択", ["チャットアプリ", "MP3音声データ処理アプリ"])
