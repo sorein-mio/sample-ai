@@ -269,7 +269,7 @@ def main():
                         full_response += response.choices[0].delta.content
                 message_placeholder.markdown(full_response + "▌")
                 
-            message_placeholder.markdown(full_response)
+                message_placeholder.markdown(full_response)
                 
                 # メッセージにモデル情報・利用パラメータ・タイムスタンプを追加
                 used_params = {
