@@ -79,23 +79,48 @@ def main():
     # チャットメッセージの表示を改善するCSS
     st.markdown("""
     <style>
+    /* チャットメッセージ全体の設定 */
     .stChatMessage {
         word-wrap: break-word !important;
         white-space: pre-wrap !important;
         overflow-wrap: break-word !important;
         max-width: 100% !important;
+        overflow: visible !important;
+        word-break: break-word !important;
     }
+    
+    /* メッセージコンテナの設定 */
     .stChatMessage .stMarkdown {
         word-wrap: break-word !important;
         white-space: pre-wrap !important;
         overflow-wrap: break-word !important;
         max-width: 100% !important;
+        overflow: visible !important;
+        word-break: break-word !important;
     }
+    
+    /* 段落の設定 */
     .stChatMessage .stMarkdown p {
         word-wrap: break-word !important;
         white-space: pre-wrap !important;
         overflow-wrap: break-word !important;
         max-width: 100% !important;
+        overflow: visible !important;
+        word-break: break-word !important;
+        margin: 0 !important;
+    }
+    
+    /* メインコンテナの設定 */
+    .main .block-container {
+        max-width: 100% !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* チャットコンテナの設定 */
+    .stChatMessageContainer {
+        max-width: 100% !important;
+        overflow: visible !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -143,9 +168,16 @@ def main():
     # チャット履歴の表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            # メッセージを完全に表示（シンプルに）
+            # メッセージを完全に表示
             content = message["content"]
+            
+            # 複数の表示方法で確実に表示
             st.markdown(content)
+            
+            # 長いメッセージの場合は追加でプレーンテキスト表示
+            if len(content) > 200:
+                with st.expander("📄 完全なテキストを表示", expanded=False):
+                    st.text(content)
             
             if message["role"] == "assistant":
                 # モデル情報を表示
