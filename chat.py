@@ -111,7 +111,15 @@ def main():
     # チャット履歴の表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            # 長いテキストの表示を改善
+            content = message["content"]
+            if len(content) > 1000:
+                # 長いテキストは折りたたみ表示
+                with st.expander("📄 長いメッセージを表示", expanded=True):
+                    st.markdown(content)
+            else:
+                st.markdown(content)
+            
             if message["role"] == "assistant":
                 # モデル情報を表示
                 model_info = message.get("model_info", "")
@@ -213,9 +221,10 @@ def main():
                 st.session_state.messages = []
                 st.rerun()
         with col2:
-            # エクスポート設定
-            export_format = st.selectbox("エクスポート形式", ["CSV", "JSONL"], index=0)
             if st.button("💾 履歴をエクスポート"):
+                # エクスポート形式選択を表示
+                export_format = st.selectbox("エクスポート形式", ["CSV", "JSONL"], index=0, key="export_format")
+                
                 if export_format == "CSV":
                     # 比較しやすい縦持ちCSV: index,ts,role,model,temperature,max_tokens,max_completion_tokens,content
                     import csv
