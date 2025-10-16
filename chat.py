@@ -26,9 +26,14 @@ MODELS = {
         "description": "GPT-5の軽量版。高速処理とコスト効率を重視したモデル",
         "category": "最強モデル"
     },
-    "GPT-5 Nano (超軽量版)": {
+    "GPT-5 nano (超軽量版)": {
         "id": "gpt-5-nano",
-        "description": "GPT-5の超軽量版。リソースが限られた環境での使用に最適",
+        "description": "要約と分類タスクに最適な、高速で安価なGPT-5のバージョン",
+        "category": "最強モデル"
+    },
+    "GPT-5 pro (最高性能)": {
+        "id": "gpt-5-pro",
+        "description": "最も賢く正確なモデル。最高の性能を提供",
         "category": "最強モデル"
     },
     "GPT-5 Chat (対話特化)": {
@@ -40,11 +45,6 @@ MODELS = {
         "id": "gpt-4o",
         "description": "テキスト、画像、音声の統合処理が可能なマルチモーダルモデル",
         "category": "最新モデル"
-    },
-    "GPT-4o-mini (高速・軽量)": {
-        "id": "gpt-4o-mini",
-        "description": "GPT-4oの軽量版。高速レスポンスとコスト効率を重視",
-        "category": "軽量モデル"
     },
     "o1-mini (推論特化)": {
         "id": "o1-mini",
@@ -204,6 +204,11 @@ def main():
                 # モデルが存在しない場合の特別な処理
                 if "does not exist" in str(e) or "model_not_found" in str(e):
                     st.warning(f"⚠️ モデル '{selected_model['id']}' が見つかりません。別のモデルを選択してください。")
+                    st.info("💡 推奨モデル: GPT-4o, GPT-4o-mini, o1-mini, GPT-4-turbo, GPT-3.5-turbo")
+                elif "rate_limit" in str(e).lower():
+                    st.warning("⚠️ レート制限に達しました。しばらく待ってから再試行してください。")
+                elif "insufficient_quota" in str(e).lower():
+                    st.warning("⚠️ APIクォータが不足しています。アカウント設定を確認してください。")
                 
                 st.session_state.messages.append({
                     "role": "assistant", 
