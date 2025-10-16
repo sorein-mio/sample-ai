@@ -64,6 +64,13 @@ def main():
     # チャットメッセージの表示を改善するCSS
     st.markdown("""
     <style>
+    /* 全体のコンテナ設定 */
+    .main .block-container {
+        max-width: 100% !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
     /* チャットメッセージ全体の設定 */
     .stChatMessage {
         word-wrap: break-word !important;
@@ -72,6 +79,8 @@ def main():
         max-width: 100% !important;
         overflow: visible !important;
         word-break: break-word !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     
     /* メッセージコンテナの設定 */
@@ -82,6 +91,8 @@ def main():
         max-width: 100% !important;
         overflow: visible !important;
         word-break: break-word !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     
     /* 段落の設定 */
@@ -93,19 +104,33 @@ def main():
         overflow: visible !important;
         word-break: break-word !important;
         margin: 0 !important;
-    }
-    
-    /* メインコンテナの設定 */
-    .main .block-container {
-        max-width: 100% !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     
     /* チャットコンテナの設定 */
     .stChatMessageContainer {
         max-width: 100% !important;
         overflow: visible !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* チャット入力エリアの設定 */
+    .stChatInput {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* サイドバーの設定 */
+    .stSidebar {
+        max-width: 25% !important;
+    }
+    
+    /* メインエリアの設定 */
+    .main .block-container > div {
+        max-width: 100% !important;
+        width: 100% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -117,7 +142,7 @@ def main():
         # シンプルなモデル選択
         model_options = list(MODELS.keys())
         selected_model_name = st.selectbox(
-            "会話に使用するモデルを選択してください",
+        "会話に使用するモデルを選択してください",
             model_options,
             index=0,  # デフォルトでGPT-5を選択
             help="各モデルの特徴を確認してから選択してください"
@@ -156,13 +181,12 @@ def main():
             # メッセージを完全に表示
             content = message["content"]
             
-            # 複数の表示方法で確実に表示
+            # メッセージを複数の方法で表示（確実に完全表示）
             st.markdown(content)
             
-            # 長いメッセージの場合は追加でプレーンテキスト表示
-            if len(content) > 200:
-                with st.expander("📄 完全なテキストを表示", expanded=False):
-                    st.text(content)
+            # すべてのメッセージにプレーンテキスト表示を追加
+            with st.expander("📄 プレーンテキストで表示", expanded=False):
+                st.text(content)
             
             if message["role"] == "assistant":
                 # モデル情報を表示
@@ -191,9 +215,9 @@ def main():
                 api_params = {
                     "model": selected_model["id"],
                     "messages": [
-                        {"role": m["role"], "content": m["content"]}
-                        for m in st.session_state.messages
-                    ],
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ],
                 }
                 
                 # ストリーミング設定
@@ -218,9 +242,9 @@ def main():
                 for response in response_stream:
                     if response.choices[0].delta.content:
                         full_response += response.choices[0].delta.content
-                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response + "▌")
                 
-                message_placeholder.markdown(full_response)
+            message_placeholder.markdown(full_response)
                 
                 # メッセージにモデル情報・利用パラメータ・タイムスタンプを追加
                 used_params = {
