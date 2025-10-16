@@ -67,6 +67,22 @@ def main():
     # タイトル
     st.title("🤖 最新AIチャットアプリ")
     st.markdown("---")
+    
+    # チャットメッセージの表示を改善するCSS
+    st.markdown("""
+    <style>
+    .stChatMessage {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+    }
+    .stChatMessage .stMarkdown {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # サイドバーでモデル選択
     with st.sidebar:
@@ -111,14 +127,16 @@ def main():
     # チャット履歴の表示
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            # 長いテキストの表示を改善
+            # メッセージを完全に表示
             content = message["content"]
-            if len(content) > 1000:
-                # 長いテキストは折りたたみ表示
-                with st.expander("📄 長いメッセージを表示", expanded=True):
-                    st.markdown(content)
-            else:
-                st.markdown(content)
+            
+            # すべてのメッセージを完全表示（切れないように）
+            st.markdown(content)
+            
+            # 長いメッセージの場合は追加で折りたたみ表示も提供
+            if len(content) > 500:
+                with st.expander("📄 メッセージ全体を表示", expanded=False):
+                    st.text(content)  # プレーンテキストで完全表示
             
             if message["role"] == "assistant":
                 # モデル情報を表示
