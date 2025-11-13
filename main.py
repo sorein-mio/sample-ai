@@ -8,10 +8,12 @@ st.set_page_config(
 )
 
 # サイドバーにナビゲーションを追加
-page = st.sidebar.radio("ページを選択", ["チャットアプリ", "MP3音声データ処理アプリ"])
+page = st.sidebar.radio("ページを選択", ["チャットアプリ", "MP3音声データ処理アプリ", "CSV解析アプリ"])
 
 # 選択されたページに基づいてスクリプトを実行
 if page == "チャットアプリ":
     exec(open("chat.py", encoding='utf-8').read())
 elif page == "MP3音声データ処理アプリ":
     exec(open("transcriber.py", encoding='utf-8').read())
+elif page == "CSV解析アプリ":
+    exec(open("csv_analyzer.py", encoding='utf-8').read())
