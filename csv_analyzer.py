@@ -50,26 +50,79 @@ MODELS = {
     }
 }
 
-def load_csv(uploaded_file, encoding='utf-8', delimiter=','):
-    """CSVファイルを読み込む"""
+def load_csv(uploaded_file, encoding='utf-8', delimiter=',', nrows=None, use_chunks=False, chunk_size=10000):
+    """CSVファイルを読み込む
+    
+    Args:
+        uploaded_file: アップロードされたファイル
+        encoding: エンコーディング
+        delimiter: 区切り文字
+        nrows: 読み込む行数（Noneの場合は全て）
+        use_chunks: チャンク読み込みを使用するか
+        chunk_size: チャンクサイズ
+    """
     try:
-        # ファイルを読み込む
-        if delimiter == ',':
-            df = pd.read_csv(uploaded_file, encoding=encoding)
+        read_params = {
+            'encoding': encoding,
+            'sep': delimiter if delimiter != ',' else ','
+        }
+        
+        # 行数制限がある場合
+        if nrows is not None:
+            read_params['nrows'] = nrows
+        
+        # チャンク読み込みの場合
+        if use_chunks and nrows is None:
+            chunks = []
+            chunk_count = 0
+            max_chunks = 100  # 最大100チャンク（メモリ保護）
+            
+            for chunk in pd.read_csv(uploaded_file, chunksize=chunk_size, **read_params):
+                chunks.append(chunk)
+                chunk_count += 1
+                if chunk_count >= max_chunks:
+                    st.warning(f"⚠️ ファイルが大きすぎるため、最初の{max_chunks * chunk_size:,}行のみ読み込みました。")
+                    break
+            
+            if chunks:
+                df = pd.concat(chunks, ignore_index=True)
+            else:
+                return None, "データが読み込めませんでした"
         else:
-            df = pd.read_csv(uploaded_file, encoding=encoding, sep=delimiter)
+            # 通常の読み込み
+            df = pd.read_csv(uploaded_file, **read_params)
+        
         return df, None
     except UnicodeDecodeError:
         # UTF-8で失敗した場合、Shift-JISを試す
         try:
             uploaded_file.seek(0)  # ファイルポインタをリセット
-            if delimiter == ',':
-                df = pd.read_csv(uploaded_file, encoding='shift-jis')
+            read_params['encoding'] = 'shift-jis'
+            
+            if use_chunks and nrows is None:
+                chunks = []
+                chunk_count = 0
+                max_chunks = 100
+                
+                for chunk in pd.read_csv(uploaded_file, chunksize=chunk_size, **read_params):
+                    chunks.append(chunk)
+                    chunk_count += 1
+                    if chunk_count >= max_chunks:
+                        st.warning(f"⚠️ ファイルが大きすぎるため、最初の{max_chunks * chunk_size:,}行のみ読み込みました。")
+                        break
+                
+                if chunks:
+                    df = pd.concat(chunks, ignore_index=True)
+                else:
+                    return None, "データが読み込めませんでした"
             else:
-                df = pd.read_csv(uploaded_file, encoding='shift-jis', sep=delimiter)
+                df = pd.read_csv(uploaded_file, **read_params)
+            
             return df, None
         except Exception as e:
             return None, f"エンコーディングエラー: {str(e)}"
+    except MemoryError:
+        return None, "メモリ不足: ファイルが大きすぎます。サンプリング機能を使用してください。"
     except Exception as e:
         return None, f"CSV読み込みエラー: {str(e)}"
 
@@ -273,23 +326,81 @@ def main():
         st.session_state.csv_data = None
     if "csv_filename" not in st.session_state:
         st.session_state.csv_filename = None
+    if "file_size_mb" not in st.session_state:
+        st.session_state.file_size_mb = 0
     
     # CSVファイルの読み込み
     if uploaded_file is not None:
-        if st.session_state.csv_filename != uploaded_file.name:
+        # ファイルサイズを取得（MB単位）
+        file_size_mb = uploaded_file.size / (1024 * 1024)
+        st.session_state.file_size_mb = file_size_mb
+        
+        # ファイルサイズの表示
+        if file_size_mb > 1:
+            st.info(f"📦 ファイルサイズ: {file_size_mb:.2f} MB")
+        
+        # 大きいファイルの場合の警告とオプション
+        use_sampling = False
+        sample_rows = None
+        use_chunks = False
+        
+        if file_size_mb > 10:
+            st.warning("⚠️ 大きなファイルが検出されました。メモリ不足を防ぐため、サンプリング機能の使用を推奨します。")
+            use_sampling = st.checkbox("📊 サンプリングを使用（最初のN行のみ読み込む）", value=True, key="use_sampling")
+            if use_sampling:
+                sample_rows = st.number_input(
+                    "読み込む行数",
+                    min_value=100,
+                    max_value=1000000,
+                    value=min(10000, int(1000000 / max(file_size_mb, 1))),
+                    step=1000,
+                    help="大きいファイルの場合、最初のN行のみ読み込むことで処理を高速化できます"
+                )
+        elif file_size_mb > 5:
+            st.info("💡 ファイルがやや大きいため、必要に応じてサンプリング機能を使用できます。")
+            use_sampling = st.checkbox("📊 サンプリングを使用（最初のN行のみ読み込む）", value=False, key="use_sampling")
+            if use_sampling:
+                sample_rows = st.number_input(
+                    "読み込む行数",
+                    min_value=100,
+                    max_value=100000,
+                    value=10000,
+                    step=1000,
+                    help="最初のN行のみ読み込むことで処理を高速化できます"
+                )
+        
+        if st.session_state.csv_filename != uploaded_file.name or (
+            st.session_state.csv_filename == uploaded_file.name and 
+            st.session_state.get("load_params") != (encoding, delimiter, sample_rows, use_chunks)
+        ):
             with st.spinner("CSVファイルを読み込み中..."):
-                df, error = load_csv(uploaded_file, encoding=encoding, delimiter=delimiter)
+                df, error = load_csv(
+                    uploaded_file, 
+                    encoding=encoding, 
+                    delimiter=delimiter,
+                    nrows=sample_rows if use_sampling else None,
+                    use_chunks=use_chunks,
+                    chunk_size=10000
+                )
                 if error:
                     st.error(error)
                     st.session_state.csv_data = None
                 else:
                     st.session_state.csv_data = df
                     st.session_state.csv_filename = uploaded_file.name
-                    st.success(f"✅ {uploaded_file.name} を読み込みました！")
+                    st.session_state.load_params = (encoding, delimiter, sample_rows, use_chunks)
+                    if use_sampling and sample_rows:
+                        st.success(f"✅ {uploaded_file.name} の最初 {sample_rows:,} 行を読み込みました！")
+                    else:
+                        st.success(f"✅ {uploaded_file.name} を読み込みました！")
         
         df = st.session_state.csv_data
         
         if df is not None:
+            # サンプリングが使用されている場合の警告
+            if st.session_state.get("load_params") and st.session_state.load_params[2] is not None:
+                st.info(f"ℹ️ 現在、データの最初 {len(df):,} 行のみが読み込まれています。全データを読み込むには、サンプリングを無効にしてください。")
+            
             # タブで機能を分ける
             tab1, tab2, tab3, tab4 = st.tabs(["📋 データ表示", "📊 統計情報", "🔍 フィルタリング", "🤖 AI分析"])
             
