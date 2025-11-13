@@ -299,11 +299,13 @@ def main():
         
         # シンプルなモデル選択
         model_options = list(MODELS.keys())
+        # デフォルトでGPT-4oを選択（GPT-5は存在しないため）
+        default_index = 3 if "GPT-4o (マルチモーダル)" in model_options else 0
         selected_model_name = st.selectbox(
             "AI分析に使用するモデルを選択してください",
             model_options,
-            index=0,
-            help="各モデルの特徴を確認してから選択してください"
+            index=default_index,
+            help="各モデルの特徴を確認してから選択してください。GPT-5系は現在利用できない可能性があります。"
         )
         
         selected_model = MODELS[selected_model_name]
@@ -541,8 +543,17 @@ def main():
                         key="analysis_query_input"
                     )
                 
+                # セッション状態で分析結果を管理
+                if "analysis_result" not in st.session_state:
+                    st.session_state.analysis_result = None
+                if "analysis_error" not in st.session_state:
+                    st.session_state.analysis_error = None
+                if "analysis_query_saved" not in st.session_state:
+                    st.session_state.analysis_query_saved = ""
+                
                 if st.button("🔍 分析を実行", type="primary"):
                     if analysis_query:
+                        st.session_state.analysis_query_saved = analysis_query
                         with st.spinner("AIがデータを分析中..."):
                             result, error = analyze_with_ai(
                                 df, 
@@ -552,20 +563,42 @@ def main():
                                 max_tokens=max_tokens
                             )
                             if error:
+                                st.session_state.analysis_result = None
+                                st.session_state.analysis_error = error
                                 st.error(f"❌ エラーが発生しました: {error}")
                                 # モデルが存在しない場合の特別な処理
-                                if "does not exist" in error or "model_not_found" in error:
+                                if "does not exist" in str(error).lower() or "model_not_found" in str(error).lower() or "not found" in str(error).lower():
                                     st.warning(f"⚠️ モデル '{selected_model['id']}' が見つかりません。別のモデルを選択してください。")
                                     st.info("💡 推奨モデル: GPT-4o, GPT-4o-mini, o1-mini, GPT-4-turbo, GPT-3.5-turbo")
-                                elif "rate_limit" in error.lower():
+                                elif "rate_limit" in str(error).lower():
                                     st.warning("⚠️ レート制限に達しました。しばらく待ってから再試行してください。")
-                                elif "insufficient_quota" in error.lower():
+                                elif "insufficient_quota" in str(error).lower():
                                     st.warning("⚠️ APIクォータが不足しています。アカウント設定を確認してください。")
+                                elif "authentication" in str(error).lower() or "api key" in str(error).lower():
+                                    st.error("⚠️ APIキーの認証に失敗しました。APIキーを確認してください。")
+                                else:
+                                    st.error(f"⚠️ 予期しないエラー: {error}")
                             else:
-                                st.markdown("### 分析結果")
-                                st.markdown(result)
+                                st.session_state.analysis_result = result
+                                st.session_state.analysis_error = None
+                                st.success("✅ 分析が完了しました！")
                     else:
                         st.warning("分析したい内容を入力してください")
+                
+                # 分析結果の表示
+                if st.session_state.analysis_result:
+                    st.markdown("---")
+                    st.markdown("### 分析結果")
+                    if st.session_state.analysis_query_saved:
+                        st.caption(f"質問: {st.session_state.analysis_query_saved}")
+                    st.markdown(st.session_state.analysis_result)
+                    
+                    # 結果をクリアするボタン
+                    if st.button("🗑️ 結果をクリア", key="clear_result"):
+                        st.session_state.analysis_result = None
+                        st.session_state.analysis_error = None
+                        st.session_state.analysis_query_saved = ""
+                        st.rerun()
     else:
         st.info("👆 CSVファイルをアップロードしてください")
         st.markdown("""
