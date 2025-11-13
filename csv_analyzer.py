@@ -172,19 +172,25 @@ def filter_dataframe(df):
         if len(numeric_cols) > 0:
             st.markdown("#### 数値範囲フィルタ")
             for col in numeric_cols[:5]:  # 最大5列まで
-                col_min, col_max = float(filtered_df[col].min()), float(filtered_df[col].max())
-                if col_min != col_max:
-                    range_values = st.slider(
-                        f"{col} の範囲",
-                        min_value=col_min,
-                        max_value=col_max,
-                        value=(col_min, col_max),
-                        key=f"filter_{col}"
-                    )
-                    filtered_df = filtered_df[
-                        (filtered_df[col] >= range_values[0]) & 
-                        (filtered_df[col] <= range_values[1])
-                    ]
+                # NaN値を除外してmin/maxを計算
+                col_series = filtered_df[col].dropna()
+                if len(col_series) > 0:
+                    col_min = float(col_series.min())
+                    col_max = float(col_series.max())
+                    
+                    # NaNでない有効な値が存在し、minとmaxが異なる場合のみスライダーを表示
+                    if not (pd.isna(col_min) or pd.isna(col_max)) and col_min != col_max:
+                        range_values = st.slider(
+                            f"{col} の範囲",
+                            min_value=col_min,
+                            max_value=col_max,
+                            value=(col_min, col_max),
+                            key=f"filter_{col}"
+                        )
+                        filtered_df = filtered_df[
+                            (filtered_df[col] >= range_values[0]) & 
+                            (filtered_df[col] <= range_values[1])
+                        ]
         
         # テキスト検索
         text_cols = filtered_df.select_dtypes(include=['object']).columns.tolist()
