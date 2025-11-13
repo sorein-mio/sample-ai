@@ -311,7 +311,7 @@ def main():
     uploaded_file = st.file_uploader(
         "CSVファイルをアップロードしてください",
         type=['csv'],
-        help="UTF-8またはShift-JISエンコーディングのCSVファイルをサポートしています"
+        help="UTF-8またはShift-JISエンコーディングのCSVファイルをサポートしています（最大1GB）"
     )
     
     # エンコーディングとデリミタの設定
@@ -344,7 +344,19 @@ def main():
         sample_rows = None
         use_chunks = False
         
-        if file_size_mb > 10:
+        if file_size_mb > 100:
+            st.error("⚠️ 非常に大きなファイル（100MB超）が検出されました。メモリ不足を防ぐため、サンプリング機能の使用を強く推奨します。")
+            use_sampling = st.checkbox("📊 サンプリングを使用（最初のN行のみ読み込む）", value=True, key="use_sampling")
+            if use_sampling:
+                sample_rows = st.number_input(
+                    "読み込む行数",
+                    min_value=100,
+                    max_value=1000000,
+                    value=min(10000, int(500000 / max(file_size_mb, 1))),
+                    step=1000,
+                    help="大きいファイルの場合、最初のN行のみ読み込むことで処理を高速化できます"
+                )
+        elif file_size_mb > 10:
             st.warning("⚠️ 大きなファイルが検出されました。メモリ不足を防ぐため、サンプリング機能の使用を推奨します。")
             use_sampling = st.checkbox("📊 サンプリングを使用（最初のN行のみ読み込む）", value=True, key="use_sampling")
             if use_sampling:
