@@ -137,9 +137,23 @@ def display_statistics(df):
     with col2:
         st.metric("列数", len(df.columns))
     with col3:
-        st.metric("欠損値", df.isnull().sum().sum())
+        # 大きなデータフレームの場合、欠損値の計算を最適化
+        if len(df) > 100000:
+            st.metric("欠損値", "計算中...")
+            with st.spinner("欠損値を計算中..."):
+                missing_count = df.isnull().sum().sum()
+            st.metric("欠損値", missing_count)
+        else:
+            st.metric("欠損値", df.isnull().sum().sum())
     with col4:
-        st.metric("重複行", df.duplicated().sum())
+        # 大きなデータフレームの場合、重複行の計算を最適化
+        if len(df) > 100000:
+            st.metric("重複行", "計算中...")
+            with st.spinner("重複行を計算中..."):
+                duplicate_count = df.duplicated().sum()
+            st.metric("重複行", duplicate_count)
+        else:
+            st.metric("重複行", df.duplicated().sum())
     
     # データ型情報
     st.markdown("### データ型情報")
@@ -424,14 +438,28 @@ def main():
             
             with tab1:
                 st.subheader("📋 データ表示")
-                st.dataframe(df, use_container_width=True, height=400)
                 
-                # ダウンロードボタン
-                csv_string = df.to_csv(index=False)
+                # 大きなデータフレームの場合、表示行数を制限
+                if len(df) > 10000:
+                    st.info(f"ℹ️ データが大きいため（{len(df):,}行）、最初の10,000行のみ表示しています。全データを表示するには、フィルタリング機能を使用してください。")
+                    display_df = df.head(10000)
+                else:
+                    display_df = df
+                
+                st.dataframe(display_df, use_container_width=True, height=400)
+                
+                # ダウンロードボタン（CSV文字列の生成をキャッシュ）
+                cache_key = f"csv_cache_{st.session_state.csv_filename}_{len(df)}"
+                if cache_key not in st.session_state:
+                    with st.spinner("CSVデータを準備中..."):
+                        st.session_state[cache_key] = df.to_csv(index=False)
+                
+                csv_data = st.session_state[cache_key]
+                
                 st.download_button(
-                    label="📥 フィルタ済みデータをダウンロード",
-                    data=csv_string,
-                    file_name=f"filtered_{st.session_state.csv_filename}",
+                    label="📥 データをダウンロード",
+                    data=csv_data,
+                    file_name=f"data_{st.session_state.csv_filename}",
                     mime="text/csv"
                 )
             
@@ -441,14 +469,31 @@ def main():
             with tab3:
                 filtered_df = filter_dataframe(df)
                 st.markdown("### フィルタリング結果")
-                st.dataframe(filtered_df, use_container_width=True, height=400)
+                
+                # フィルタリング結果の行数を表示
+                if len(filtered_df) < len(df):
+                    st.success(f"✅ {len(filtered_df):,} 行にフィルタリングされました（元のデータ: {len(df):,} 行）")
+                
+                # 大きなデータフレームの場合、表示行数を制限
+                if len(filtered_df) > 10000:
+                    st.info(f"ℹ️ フィルタリング結果が大きいため（{len(filtered_df):,}行）、最初の10,000行のみ表示しています。")
+                    display_filtered_df = filtered_df.head(10000)
+                else:
+                    display_filtered_df = filtered_df
+                
+                st.dataframe(display_filtered_df, use_container_width=True, height=400)
                 
                 # フィルタ済みデータのダウンロード
                 if len(filtered_df) < len(df):
-                    csv_string = filtered_df.to_csv(index=False)
+                    # フィルタ済みデータのCSV文字列をキャッシュ
+                    filter_key = f"filtered_csv_{hash(str(filtered_df.shape))}"
+                    if filter_key not in st.session_state:
+                        with st.spinner("フィルタ済みCSVデータを準備中..."):
+                            st.session_state[filter_key] = filtered_df.to_csv(index=False)
+                    
                     st.download_button(
                         label="📥 フィルタ済みデータをダウンロード",
-                        data=csv_string,
+                        data=st.session_state[filter_key],
                         file_name=f"filtered_{st.session_state.csv_filename}",
                         mime="text/csv",
                         key="download_filtered"

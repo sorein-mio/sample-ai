@@ -12,8 +12,10 @@ page = st.sidebar.radio("ページを選択", ["チャットアプリ", "MP3音�
 
 # 選択されたページに基づいてスクリプトを実行
 if page == "チャットアプリ":
-    exec(open("chat.py", encoding='utf-8').read())
+    from chat import main as chat_main
+    chat_main()
 elif page == "MP3音声データ処理アプリ":
     exec(open("transcriber.py", encoding='utf-8').read())
 elif page == "CSV解析アプリ":
-    exec(open("csv_analyzer.py", encoding='utf-8').read())
+    from csv_analyzer import main as csv_main
+    csv_main()
